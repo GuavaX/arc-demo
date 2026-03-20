@@ -3,62 +3,165 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Arc Curve Deposit Tool</title>
+  <title>Arc DeFi Interaction Tool - Final Balance</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
+      margin: 0;
       font-family: Arial, sans-serif;
-      max-width: 860px;
-      margin: 24px auto;
-      padding: 0 16px;
-      line-height: 1.5;
+      background: #f7f7f7;
+      color: #222;
     }
 
-    h1 {
-      margin-bottom: 8px;
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 320px;
+      background: #111827;
+      color: #f3f4f6;
+      padding: 18px 16px;
+      box-sizing: border-box;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid #1f2937;
+    }
+
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .status-box {
+      background: #1f2937;
+      border-radius: 10px;
+      padding: 12px;
+      margin-bottom: 14px;
+    }
+
+    .status-title {
+      font-size: 13px;
+      color: #9ca3af;
+      margin-bottom: 6px;
+    }
+
+    .status-main {
+      font-size: 16px;
+      font-weight: bold;
+      line-height: 1.4;
+      word-break: break-word;
+    }
+
+    .status-sub {
+      font-size: 13px;
+      margin-top: 8px;
+      color: #d1d5db;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .status-ok { color: #34d399; }
+    .status-warn { color: #fbbf24; }
+    .status-err { color: #f87171; }
+
+    .quick-log {
+      background: #0f172a;
+      border-radius: 10px;
+      padding: 10px;
+      min-height: 220px;
+      max-height: 420px;
+      overflow-y: auto;
+      font-size: 13px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .content {
+      flex: 1;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    h1, h2, h3 {
+      margin: 0 0 12px;
+    }
+
+    .note, .okbox, .warnbox {
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
     }
 
     .note {
       background: #fff8db;
       border: 1px solid #f1d46a;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 16px;
+    }
+
+    .okbox {
+      background: #eefcf1;
+      border: 1px solid #a8ddb3;
+    }
+
+    .warnbox {
+      background: #fff1f1;
+      border: 1px solid #e6b3b3;
     }
 
     .card {
+      background: #fff;
       border: 1px solid #ddd;
-      border-radius: 10px;
+      border-radius: 12px;
       padding: 16px;
       margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
 
-    .row {
+    .grid-2, .grid-3 {
       display: grid;
+      gap: 14px;
+    }
+
+    .grid-2 {
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+    }
+
+    .grid-3 {
+      grid-template-columns: 1fr 1fr 1fr;
     }
 
     label {
       display: block;
-      margin-bottom: 6px;
       font-weight: bold;
+      margin-bottom: 6px;
     }
 
-    input {
+    input, select, button, textarea {
       width: 100%;
       box-sizing: border-box;
       padding: 10px;
-      font-size: 16px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
+      font-size: 15px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
     }
 
     button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
       cursor: pointer;
-      margin-bottom: 10px;
+      background: #f3f4f6;
+    }
+
+    button:hover {
+      background: #e5e7eb;
+    }
+
+    textarea {
+      min-height: 100px;
+      resize: vertical;
     }
 
     .small {
@@ -66,83 +169,380 @@
       color: #555;
     }
 
-    .log {
-      background: #111;
-      color: #eee;
-      padding: 14px;
-      border-radius: 10px;
-      min-height: 240px;
-      white-space: pre-wrap;
-      word-break: break-word;
-      font-family: Consolas, monospace;
+    .mono {
+      font-family: Consolas, Monaco, monospace;
+      word-break: break-all;
     }
 
-    .ok { color: #18a558; }
-    .warn { color: #c07a00; }
-    .err { color: #d84a4a; }
+    .log {
+      background: #0f1115;
+      color: #e8e8e8;
+      border-radius: 12px;
+      padding: 14px;
+      min-height: 320px;
+      max-height: 560px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .ok { color: #24b26b; }
+    .err { color: #ff6b6b; }
+    .warntext { color: #d89b19; }
+
+    .rowline {
+      border-top: 1px solid #eee;
+      margin: 10px 0 14px;
+    }
 
     code {
-      background: #f3f3f3;
-      padding: 2px 4px;
-      border-radius: 4px;
+      background: #f3f4f6;
+      border-radius: 5px;
+      padding: 2px 5px;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      pointer-events: none;
+    }
+
+    .toast {
+      min-width: 260px;
+      max-width: 420px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+      color: #fff;
+      font-size: 14px;
+      line-height: 1.45;
+      opacity: 0;
+      transform: translateY(-8px);
+      transition: opacity 0.22s ease, transform 0.22s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast-success {
+      background: #16a34a;
+    }
+
+    .toast-error {
+      background: #dc2626;
+    }
+
+    .toast-info {
+      background: #2563eb;
+    }
+
+    .toast-warn {
+      background: #d97706;
+    }
+
+    @media (max-width: 1100px) {
+      .layout {
+        flex-direction: column;
+      }
+
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+      }
+
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>Arc Testnet Curve Deposit Tool</h1>
+  <div id="toastWrap" class="toast-wrap"></div>
 
-  <div class="note">
-    <div><b>使用前先做兩件事：</b></div>
-    <div>1. 把程式內的 <code>POOL_ADDRESS</code> / <code>USDC_ADDRESS</code> / <code>EURC_ADDRESS</code> 改成正確完整地址。</div>
-    <div>2. 不要用 <code>file://</code> 直接雙擊開啟，請用 <code>http://127.0.0.1</code> 的本機伺服器打開。</div>
-  </div>
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>即時狀態</h2>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <label for="usdcAmount">USDC 存入數量</label>
-        <input id="usdcAmount" type="text" value="0.1" />
+      <div class="status-box">
+        <div class="status-title">目前狀態</div>
+        <div id="statusMain" class="status-main">尚未執行</div>
+        <div id="statusSub" class="status-sub">等待操作中</div>
       </div>
-      <div>
-        <label for="eurcAmount">EURC 存入數量</label>
-        <input id="eurcAmount" type="text" value="0.1" />
+
+      <div class="status-box">
+        <div class="status-title">錢包地址</div>
+        <div id="statusWallet" class="status-main">未連接</div>
       </div>
-    </div>
 
-    <label for="minLp">Minimum LP Tokens</label>
-    <input id="minLp" type="text" value="0" />
+      <div class="status-box">
+        <div class="status-title">鏈別</div>
+        <div id="statusChain" class="status-main">未知</div>
+      </div>
 
-    <div class="small">
-      第一次測試建議：USDC / EURC 先填很小的值，<code>minLp</code> 先填 0。
-    </div>
-  </div>
+      <div class="status-box">
+        <div class="status-title">USDC Balance</div>
+        <div id="usdcBalance" class="status-main">0</div>
+      </div>
 
-  <div class="card">
-    <button id="connectBtn">1. 連接 MetaMask</button>
-    <button id="debugBtn">2. 驗證地址與鏈別</button>
-    <button id="approveBtn">3. Approve USDC / EURC</button>
-    <button id="depositBtn">4. Deposit 到 Pool</button>
-    <button id="clearBtn">清空紀錄</button>
-  </div>
+      <div class="status-box">
+        <div class="status-title">EURC Balance</div>
+        <div id="eurcBalance" class="status-main">0</div>
+      </div>
 
-  <div class="card">
-    <b>執行紀錄</b>
-    <div id="log" class="log"></div>
+      <div class="status-box">
+        <div class="status-title">LP Wallet Balance</div>
+        <div id="lpWalletBalance" class="status-main">0</div>
+      </div>
+
+      <div class="status-box">
+        <div class="status-title">LP Staked</div>
+        <div id="lpStakedBalance" class="status-main">0</div>
+      </div>
+
+      <div class="status-box">
+        <div class="status-title">LP Total</div>
+        <div id="lpTotalBalance" class="status-main">0</div>
+      </div>
+
+      <div class="status-box">
+        <button id="refreshBalancesBtn">刷新餘額</button>
+      </div>
+
+      <div class="status-box">
+        <div class="status-title">最近動作</div>
+        <div id="quickLog" class="quick-log">尚無紀錄</div>
+      </div>
+    </aside>
+
+    <main class="content">
+      <h1>Arc DeFi Interaction Tool</h1>
+
+      <div class="note">
+        <div><b>使用前提醒</b></div>
+        <div>1. 請用 <code>http://127.0.0.1</code> 開啟，不要直接雙擊 html。</div>
+        <div>2. MetaMask 中 Arc Testnet 只保留一份，Chain ID 使用 <code>5042002</code>。</div>
+      </div>
+
+      <div class="okbox">
+        <div><b>已驗證成功的 ABI / 合約組合</b></div>
+        <div class="mono">Pool: 0x2d84d79c852f6842abe0304b70bbaa1506add457</div>
+        <div class="mono">Gauge: 0xcd4e6c8056608e7ca5b8cd126f32c56c43d92979</div>
+        <div class="mono">Swap ABI: exchange(int128,int128,uint256,uint256,address)</div>
+        <div class="mono">Deposit ABI: add_liquidity(uint256[] amounts, uint256 min_mint_amount)</div>
+        <div class="mono">Stake ABI: deposit(uint256)</div>
+        <div class="mono">Claim ABI: claim_rewards()</div>
+      </div>
+
+      <div class="card">
+        <h2>1. 設定</h2>
+
+        <div class="grid-2">
+          <div>
+            <label for="poolAddress">POOL_ADDRESS</label>
+            <input id="poolAddress" class="mono" value="0x2d84d79c852f6842abe0304b70bbaa1506add457" />
+          </div>
+          <div>
+            <label for="gaugeAddress">GAUGE_ADDRESS</label>
+            <input id="gaugeAddress" class="mono" value="0xcd4e6c8056608e7ca5b8cd126f32c56c43d92979" />
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div>
+            <label for="lpTokenAddress">LP_TOKEN_ADDRESS</label>
+            <input id="lpTokenAddress" class="mono" value="0x2d84d79c852f6842abe0304b70bbaa1506add457" />
+          </div>
+          <div>
+            <label for="usdcAddress">USDC_ADDRESS</label>
+            <input id="usdcAddress" class="mono" value="0x3600000000000000000000000000000000000000" />
+          </div>
+          <div>
+            <label for="eurcAddress">EURC_ADDRESS</label>
+            <input id="eurcAddress" class="mono" value="0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a" />
+          </div>
+        </div>
+
+        <div class="grid-3">
+          <div>
+            <label for="usdcIndex">USDC coin index</label>
+            <input id="usdcIndex" value="0" />
+          </div>
+          <div>
+            <label for="eurcIndex">EURC coin index</label>
+            <input id="eurcIndex" value="1" />
+          </div>
+          <div>
+            <label for="rewardTokenAddress">REWARD_TOKEN_ADDRESS（可留空）</label>
+            <input id="rewardTokenAddress" class="mono" value="" />
+          </div>
+        </div>
+
+        <button id="connectBtn">連接 MetaMask</button>
+        <button id="debugBtn">檢查鏈別 / 地址 / Pool / Gauge</button>
+      </div>
+
+      <div class="card">
+        <h2>2. Swap</h2>
+        <div class="grid-3">
+          <div>
+            <label for="swapFrom">From</label>
+            <select id="swapFrom">
+              <option value="USDC">USDC</option>
+              <option value="EURC">EURC</option>
+            </select>
+          </div>
+          <div>
+            <label for="swapTo">To</label>
+            <select id="swapTo">
+              <option value="EURC">EURC</option>
+              <option value="USDC">USDC</option>
+            </select>
+          </div>
+          <div>
+            <label for="swapAmount">Amount</label>
+            <input id="swapAmount" value="1" />
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label for="swapMinOut">min_dy</label>
+            <input id="swapMinOut" value="0" />
+          </div>
+          <div>
+            <label for="swapReceiver">receiver（可留空）</label>
+            <input id="swapReceiver" class="mono" value="" />
+          </div>
+        </div>
+
+        <button id="approveSwapBtn">Approve Swap Token</button>
+        <button id="swapBtn">Swap</button>
+      </div>
+
+      <div class="card">
+        <h2>3. Deposit Liquidity</h2>
+        <div class="grid-3">
+          <div>
+            <label for="depositUsdc">USDC amount</label>
+            <input id="depositUsdc" value="0.1" />
+          </div>
+          <div>
+            <label for="depositEurc">EURC amount</label>
+            <input id="depositEurc" value="0.1" />
+          </div>
+          <div>
+            <label for="depositMinLp">min LP</label>
+            <input id="depositMinLp" value="0" />
+          </div>
+        </div>
+        <button id="approveDepositBtn">Approve Deposit Tokens</button>
+        <button id="depositBtn">Deposit</button>
+      </div>
+
+      <div class="card">
+        <h2>4. Withdraw Liquidity</h2>
+        <div class="grid-3">
+          <div>
+            <label for="withdrawLpAmount">LP amount</label>
+            <input id="withdrawLpAmount" value="0.01" />
+          </div>
+          <div>
+            <label for="withdrawMinUsdc">min USDC</label>
+            <input id="withdrawMinUsdc" value="0" />
+          </div>
+          <div>
+            <label for="withdrawMinEurc">min EURC</label>
+            <input id="withdrawMinEurc" value="0" />
+          </div>
+        </div>
+
+        <button id="withdrawBtn">Withdraw Proportional</button>
+
+        <div class="rowline"></div>
+
+        <h3>Withdraw One Coin</h3>
+        <div class="grid-3">
+          <div>
+            <label for="withdrawOneLpAmount">LP amount</label>
+            <input id="withdrawOneLpAmount" value="0.01" />
+          </div>
+          <div>
+            <label for="withdrawOneToken">Token</label>
+            <select id="withdrawOneToken">
+              <option value="USDC">USDC</option>
+              <option value="EURC">EURC</option>
+            </select>
+          </div>
+          <div>
+            <label for="withdrawOneMinOut">min amount</label>
+            <input id="withdrawOneMinOut" value="0" />
+          </div>
+        </div>
+        <button id="withdrawOneBtn">Withdraw One Coin</button>
+      </div>
+
+      <div class="card">
+        <h2>5. Stake / Unstake / Claim</h2>
+        <div class="grid-3">
+          <div>
+            <label for="stakeLpAmount">LP amount to stake</label>
+            <input id="stakeLpAmount" value="0.01" />
+          </div>
+          <div>
+            <label for="unstakeLpAmount">LP amount to unstake</label>
+            <input id="unstakeLpAmount" value="0.01" />
+          </div>
+          <div>
+            <label for="rewardReceiver">claim receiver（保留欄位）</label>
+            <input id="rewardReceiver" class="mono" value="" />
+          </div>
+        </div>
+
+        <button id="approveGaugeBtn">Approve LP to Gauge</button>
+        <button id="stakeBtn">Stake LP</button>
+        <button id="unstakeBtn">Unstake LP</button>
+        <button id="claimBtn">Claim Rewards</button>
+      </div>
+
+      <div class="card">
+        <h2>6. Batch Interaction</h2>
+        <div class="small">這是手動批次執行工具，用來增加互動多樣性。</div>
+        <textarea id="batchPlan">[
+  { "action": "swap", "from": "USDC", "to": "EURC", "amount": "1", "minOut": "0" },
+  { "action": "swap", "from": "EURC", "to": "USDC", "amount": "1", "minOut": "0" },
+  { "action": "deposit", "usdc": "0.1", "eurc": "0.1", "minLp": "0" },
+  { "action": "stake", "amount": "0.01" },
+  { "action": "claim" },
+  { "action": "unstake", "amount": "0.01" }
+]</textarea>
+        <button id="runBatchBtn">執行 Batch Plan</button>
+      </div>
+
+      <div class="card">
+        <h2>完整紀錄</h2>
+        <button id="clearLogBtn">清空紀錄</button>
+        <div id="log" class="log"></div>
+      </div>
+    </main>
   </div>
 
   <script>
     const { ethers } = window.ethers;
 
-    // =========================
-    // 只要改下面三個地址即可
-    // =========================
-    const POOL_ADDRESS = "0x2d84d79c852f6842abe0304b70bbaa1506add457";
-    const USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
-    const EURC_ADDRESS = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a";
-
-    // Arc Testnet 參數
     const ARC_CHAIN_ID_DEC = 5042002n;
-    const ARC_CHAIN_ID_HEX = "0x4CEF52";
+    const ARC_CHAIN_ID_HEX = "0x4cef52";
 
     const ARC_NETWORK = {
       chainId: ARC_CHAIN_ID_HEX,
@@ -156,7 +556,6 @@
       blockExplorerUrls: ["https://testnet.arcscan.app"]
     };
 
-    // ERC20 最小 ABI
     const ERC20_ABI = [
       "function name() view returns (string)",
       "function symbol() view returns (string)",
@@ -166,28 +565,24 @@
       "function approve(address spender, uint256 amount) returns (bool)"
     ];
 
-    // Curve 2-coin pool 常見介面
-    const CURVE_POOL_ABI = [
-       "function add_liquidity(uint256[] amounts, uint256 min_mint_amount) returns (uint256)",
-       "function coins(uint256 i) view returns (address)",
-       "function N_COINS() view returns (uint256)"
+    const POOL_ABI = [
+      "function add_liquidity(uint256[] amounts, uint256 min_mint_amount) returns (uint256)",
+      "function remove_liquidity(uint256 _amount, uint256[] min_amounts) returns (uint256[])",
+      "function remove_liquidity_one_coin(uint256 _token_amount, uint256 i, uint256 min_amount) returns (uint256)",
+      "function remove_liquidity_one_coin(uint256 _token_amount, int128 i, uint256 min_amount) returns (uint256)",
+      "function exchange(int128 i, int128 j, uint256 dx, uint256 min_dy, address receiver) returns (uint256)",
+      "function coins(uint256 i) view returns (address)",
+      "function N_COINS() view returns (uint256)",
+      "function balances(uint256 i) view returns (uint256)"
     ];
 
-    async function debugPoolCoins() {
-      const { pool } = await getContracts();
-
-      try {
-        const n = await pool.N_COINS();
-        log(`N_COINS = ${n.toString()}`);
-
-        for (let i = 0; i < Number(n); i++) {
-          const c = await pool.coins(i);
-          log(`coins(${i}) = ${c}`);
-        }
-      } catch (e) {
-        log("讀取 pool coins 失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
-      }
-    }
+    const GAUGE_ABI = [
+      "function deposit(uint256 _value)",
+      "function withdraw(uint256 _value)",
+      "function balanceOf(address) view returns (uint256)",
+      "function claim_rewards()",
+      "function lp_token() view returns (address)"
+    ];
 
     let injectedProvider = null;
     let provider = null;
@@ -202,10 +597,71 @@
       box.appendChild(line);
       box.scrollTop = box.scrollHeight;
       console.log(msg);
+
+      appendQuickLog(msg);
+    }
+
+    function appendQuickLog(msg) {
+      const box = document.getElementById("quickLog");
+      if (box.textContent === "尚無紀錄") {
+        box.textContent = "";
+      }
+      box.textContent += msg + "\n";
+      box.scrollTop = box.scrollHeight;
     }
 
     function clearLog() {
       document.getElementById("log").innerHTML = "";
+      document.getElementById("quickLog").textContent = "尚無紀錄";
+    }
+
+    function setStatus(main, sub = "", type = "") {
+      const mainEl = document.getElementById("statusMain");
+      const subEl = document.getElementById("statusSub");
+      mainEl.textContent = main;
+      subEl.textContent = sub;
+      mainEl.className = "status-main";
+      if (type === "ok") mainEl.classList.add("status-ok");
+      if (type === "warn") mainEl.classList.add("status-warn");
+      if (type === "err") mainEl.classList.add("status-err");
+    }
+
+    function updateWalletStatus(addr) {
+      document.getElementById("statusWallet").textContent = addr || "未連接";
+    }
+
+    function updateChainStatus(chainId) {
+      document.getElementById("statusChain").textContent = chainId ? chainId.toString() : "未知";
+    }
+
+    function showToast(message, type = "info", duration = 2600) {
+      const wrap = document.getElementById("toastWrap");
+      if (!wrap) return;
+
+      const toast = document.createElement("div");
+      toast.className = `toast toast-${type}`;
+      toast.textContent = message;
+
+      wrap.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.add("show");
+      });
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => {
+          toast.remove();
+        }, 220);
+      }, duration);
+    }
+
+    function showSuccessToast(actionName, detail = "") {
+      showToast(`${actionName} 成功${detail ? "｜" + detail : ""}`, "success");
+    }
+
+    function showErrorToast(actionName, detail = "") {
+      showToast(`${actionName} 失敗${detail ? "｜" + detail : ""}`, "error", 3600);
     }
 
     function serializeError(e) {
@@ -216,9 +672,19 @@
         code: e?.code ?? null,
         data: e?.data ?? null,
         error: e?.error ?? null,
-        info: e?.info ?? null,
-        stack: e?.stack ?? null
+        info: e?.info ?? null
       };
+    }
+
+    function getErrorMessage(e) {
+      return (
+        e?.shortMessage ||
+        e?.reason ||
+        e?.error?.message ||
+        e?.info?.error?.message ||
+        e?.message ||
+        JSON.stringify(serializeError(e))
+      );
     }
 
     function getMetaMaskProvider() {
@@ -226,13 +692,11 @@
       const eth = window.ethereum;
       if (!eth) return null;
 
-      // 多 provider 情況
       if (Array.isArray(eth.providers)) {
         const mm = eth.providers.find((p) => p && p.isMetaMask && typeof p.request === "function");
         if (mm) return mm;
       }
 
-      // 單 provider 情況
       if (eth.isMetaMask && typeof eth.request === "function") {
         return eth;
       }
@@ -243,39 +707,70 @@
     async function ensureMetaMask() {
       const mm = getMetaMaskProvider();
       if (!mm) {
-        throw new Error("找不到 MetaMask provider。請確認：1. 已安裝並解鎖 MetaMask 2. 用 http://127.0.0.1 開啟頁面 3. 暫時停用其他錢包插件後再試。");
+        throw new Error("找不到 MetaMask provider。請確認已安裝、已解鎖，且用 http://127.0.0.1 開啟頁面。");
       }
       return mm;
     }
 
-    async function connectWallet() {
-      injectedProvider = await ensureMetaMask();
+    function readConfig() {
+      return {
+        poolAddress: document.getElementById("poolAddress").value.trim(),
+        gaugeAddress: document.getElementById("gaugeAddress").value.trim(),
+        lpTokenAddress: document.getElementById("lpTokenAddress").value.trim(),
+        usdcAddress: document.getElementById("usdcAddress").value.trim(),
+        eurcAddress: document.getElementById("eurcAddress").value.trim(),
+        rewardTokenAddress: document.getElementById("rewardTokenAddress").value.trim(),
+        usdcIndex: Number(document.getElementById("usdcIndex").value.trim()),
+        eurcIndex: Number(document.getElementById("eurcIndex").value.trim())
+      };
+    }
 
-      await injectedProvider.request({
-        method: "eth_requestAccounts"
-      });
+    function ensureHexAddress(addr, name, allowEmpty = false) {
+      if (allowEmpty && !addr) return;
+      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+        throw new Error(`${name} 不是完整的 42 字元地址：${addr}`);
+      }
+    }
+
+    function formatDisplayNumber(value, digits = 4) {
+      const num = Number(value);
+      if (!Number.isFinite(num)) return "0";
+      return num.toFixed(digits);
+    }
+
+    async function connectWallet() {
+      setStatus("連接錢包中...", "正在向 MetaMask 請求權限", "warn");
+
+      injectedProvider = await ensureMetaMask();
+      await injectedProvider.request({ method: "eth_requestAccounts" });
 
       provider = new ethers.BrowserProvider(injectedProvider);
       signer = await provider.getSigner();
       userAddress = await signer.getAddress();
 
+      updateWalletStatus(userAddress);
       log(`已連接錢包：${userAddress}`, "ok");
 
       const network = await provider.getNetwork();
+      updateChainStatus(network.chainId);
       log(`目前 chainId：${network.chainId.toString()}`);
 
       if (network.chainId !== ARC_CHAIN_ID_DEC) {
-        log("目前不在 Arc Testnet，嘗試切換鏈...", "warn");
+        log("目前不在 Arc Testnet，嘗試切換鏈...", "warntext");
         await switchToArc();
       }
 
       const network2 = await provider.getNetwork();
-      log(`目前鏈別確認：${network2.chainId.toString()}`);
+      updateChainStatus(network2.chainId);
+      log(`目前鏈別確認：${network2.chainId.toString()}`, "ok");
+
+      setStatus("已連接", `地址：${userAddress}\nChain ID：${network2.chainId.toString()}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("連接錢包", userAddress.slice(0, 6) + "..." + userAddress.slice(-4));
     }
 
     async function switchToArc() {
       const mm = await ensureMetaMask();
-
       try {
         await mm.request({
           method: "wallet_switchEthereumChain",
@@ -299,44 +794,136 @@
       userAddress = await signer.getAddress();
     }
 
-    function ensureHexAddress(addr, name) {
-      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
-        throw new Error(`${name} 不是完整的 42 字元地址：${addr}`);
-      }
-    }
-
     async function getContracts() {
       if (!provider || !signer || !userAddress) {
         throw new Error("請先連接 MetaMask");
       }
 
-      ensureHexAddress(POOL_ADDRESS, "POOL_ADDRESS");
-      ensureHexAddress(USDC_ADDRESS, "USDC_ADDRESS");
-      ensureHexAddress(EURC_ADDRESS, "EURC_ADDRESS");
+      const cfg = readConfig();
 
-      const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
-      const eurc = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, signer);
-      const pool = new ethers.Contract(POOL_ADDRESS, CURVE_POOL_ABI, signer);
+      ensureHexAddress(cfg.poolAddress, "POOL_ADDRESS");
+      ensureHexAddress(cfg.gaugeAddress, "GAUGE_ADDRESS");
+      ensureHexAddress(cfg.lpTokenAddress, "LP_TOKEN_ADDRESS");
+      ensureHexAddress(cfg.usdcAddress, "USDC_ADDRESS");
+      ensureHexAddress(cfg.eurcAddress, "EURC_ADDRESS");
+      ensureHexAddress(cfg.rewardTokenAddress, "REWARD_TOKEN_ADDRESS", true);
 
-      return { usdc, eurc, pool };
+      return {
+        cfg,
+        pool: new ethers.Contract(cfg.poolAddress, POOL_ABI, signer),
+        gauge: new ethers.Contract(cfg.gaugeAddress, GAUGE_ABI, signer),
+        lpToken: new ethers.Contract(cfg.lpTokenAddress, ERC20_ABI, signer),
+        usdc: new ethers.Contract(cfg.usdcAddress, ERC20_ABI, signer),
+        eurc: new ethers.Contract(cfg.eurcAddress, ERC20_ABI, signer),
+      };
     }
 
-    async function debugAddresses() {
-      if (!provider) {
-        throw new Error("請先連接 MetaMask");
+    async function updateAllBalances() {
+      const { usdc, eurc, lpToken, gauge } = await getContracts();
+
+      const [
+        usdcDecimals,
+        eurcDecimals,
+        lpDecimals,
+        usdcRaw,
+        eurcRaw,
+        lpWalletRaw,
+        lpStakedRaw
+      ] = await Promise.all([
+        usdc.decimals(),
+        eurc.decimals(),
+        lpToken.decimals(),
+        usdc.balanceOf(userAddress),
+        eurc.balanceOf(userAddress),
+        lpToken.balanceOf(userAddress),
+        gauge.balanceOf(userAddress)
+      ]);
+
+      const usdcFormatted = ethers.formatUnits(usdcRaw, usdcDecimals);
+      const eurcFormatted = ethers.formatUnits(eurcRaw, eurcDecimals);
+      const lpWalletFormatted = ethers.formatUnits(lpWalletRaw, lpDecimals);
+      const lpStakedFormatted = ethers.formatUnits(lpStakedRaw, lpDecimals);
+
+      const lpTotal =
+        parseFloat(lpWalletFormatted || "0") +
+        parseFloat(lpStakedFormatted || "0");
+
+      document.getElementById("usdcBalance").textContent =
+        formatDisplayNumber(usdcFormatted);
+
+      document.getElementById("eurcBalance").textContent =
+        formatDisplayNumber(eurcFormatted);
+
+      document.getElementById("lpWalletBalance").textContent =
+        formatDisplayNumber(lpWalletFormatted);
+
+      document.getElementById("lpStakedBalance").textContent =
+        formatDisplayNumber(lpStakedFormatted);
+
+      document.getElementById("lpTotalBalance").textContent =
+        formatDisplayNumber(lpTotal);
+
+      log(
+        `餘額更新：USDC=${formatDisplayNumber(usdcFormatted)}, EURC=${formatDisplayNumber(eurcFormatted)}, LP Wallet=${formatDisplayNumber(lpWalletFormatted)}, LP Staked=${formatDisplayNumber(lpStakedFormatted)}`,
+        "ok"
+      );
+    }
+
+    async function parseTokenAmount(symbol, humanAmount) {
+      const { usdc, eurc } = await getContracts();
+      const amt = (humanAmount || "0").trim();
+
+      if (symbol === "USDC") {
+        const decimals = await usdc.decimals();
+        return ethers.parseUnits(amt, decimals);
+      }
+      if (symbol === "EURC") {
+        const decimals = await eurc.decimals();
+        return ethers.parseUnits(amt, decimals);
+      }
+      throw new Error(`未知 token symbol: ${symbol}`);
+    }
+
+    async function parseLpAmount(humanAmount) {
+      const { lpToken } = await getContracts();
+      const decimals = await lpToken.decimals();
+      return ethers.parseUnits((humanAmount || "0").trim(), decimals);
+    }
+
+    async function approveIfNeeded(tokenContract, spender, amount, label) {
+      const allowance = await tokenContract.allowance(userAddress, spender);
+      log(`${label} allowance：${allowance.toString()}`);
+      if (allowance >= amount) {
+        log(`${label} allowance 已足夠，略過 approve`, "ok");
+        return;
       }
 
-      ensureHexAddress(POOL_ADDRESS, "POOL_ADDRESS");
-      ensureHexAddress(USDC_ADDRESS, "USDC_ADDRESS");
-      ensureHexAddress(EURC_ADDRESS, "EURC_ADDRESS");
+      setStatus(`Approve ${label} 中...`, `授權對象：${spender}`, "warn");
+      const tx = await tokenContract.approve(spender, amount);
+      log(`${label} approve tx: ${tx.hash}`);
+      await tx.wait();
+      log(`${label} approve 完成`, "ok");
+      setStatus(`${label} Approve 完成`, `tx: ${tx.hash}`, "ok");
+      showSuccessToast(`Approve ${label}`, tx.hash.slice(0, 10) + "...");
+    }
 
+    async function debugAll() {
+      setStatus("檢查中...", "正在檢查鏈別與合約地址", "warn");
+
+      const { cfg, pool, gauge, lpToken, usdc, eurc } = await getContracts();
       const network = await provider.getNetwork();
+
+      updateChainStatus(network.chainId);
+
       log(`chainId = ${network.chainId.toString()}`);
+      log(`wallet = ${userAddress}`);
 
       const addresses = [
-        ["POOL_ADDRESS", POOL_ADDRESS],
-        ["USDC_ADDRESS", USDC_ADDRESS],
-        ["EURC_ADDRESS", EURC_ADDRESS]
+        ["POOL_ADDRESS", cfg.poolAddress],
+        ["GAUGE_ADDRESS", cfg.gaugeAddress],
+        ["LP_TOKEN_ADDRESS", cfg.lpTokenAddress],
+        ["USDC_ADDRESS", cfg.usdcAddress],
+        ["EURC_ADDRESS", cfg.eurcAddress],
       ];
 
       for (const [name, address] of addresses) {
@@ -345,199 +932,405 @@
         log(`${name} has code: ${code !== "0x" ? "true" : "false"}`);
       }
 
-      const usdcRead = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
-      const eurcRead = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider);
-
-      try {
-        const [name, symbol, decimals] = await Promise.all([
-          usdcRead.name(),
-          usdcRead.symbol(),
-          usdcRead.decimals()
+      for (const item of [
+        ["USDC", usdc],
+        ["EURC", eurc],
+        ["LP", lpToken]
+      ]) {
+        const [name, symbol, decimals, balance] = await Promise.all([
+          item[1].name(),
+          item[1].symbol(),
+          item[1].decimals(),
+          item[1].balanceOf(userAddress)
         ]);
-        log(`USDC -> name=${name}, symbol=${symbol}, decimals=${decimals}`, "ok");
-      } catch (e) {
-        throw new Error("USDC_ADDRESS 不是可正常讀取的 ERC20，或地址 / 鏈別有誤。");
+        log(`${item[0]} -> name=${name}, symbol=${symbol}, decimals=${decimals}, balance=${balance.toString()}`, "ok");
       }
 
-      try {
-        const [name, symbol, decimals] = await Promise.all([
-          eurcRead.name(),
-          eurcRead.symbol(),
-          eurcRead.decimals()
-        ]);
-        log(`EURC -> name=${name}, symbol=${symbol}, decimals=${decimals}`, "ok");
-      } catch (e) {
-        throw new Error("EURC_ADDRESS 不是可正常讀取的 ERC20，或地址 / 鏈別有誤。");
+      const n = await pool.N_COINS();
+      log(`Pool N_COINS = ${n.toString()}`, "ok");
+      for (let i = 0; i < Number(n); i++) {
+        const coinAddr = await pool.coins(i);
+        const balance = await pool.balances(i);
+        log(`coins(${i}) = ${coinAddr} | poolBalance=${balance.toString()}`);
       }
 
-      log("地址與 ERC20 讀取測試完成。", "ok");
+      const gaugeBal = await gauge.balanceOf(userAddress);
+      log(`Gauge staked LP balance = ${gaugeBal.toString()}`, "ok");
 
-      await debugPoolCoins();
+      try {
+        const gaugeLp = await gauge.lp_token();
+        log(`Gauge lp_token() = ${gaugeLp}`, "ok");
+      } catch (e) {
+        log(`讀取 gauge.lp_token() 失敗：${getErrorMessage(e)}`, "warntext");
+      }
+
+      setStatus("檢查完成", "鏈別、地址、Pool、Gauge 皆已讀取", "ok");
+      await updateAllBalances();
+      showSuccessToast("檢查完成");
     }
 
-    async function approveTokens() {
-      const { usdc, eurc } = await getContracts();
+    async function approveSwapToken() {
+      const { cfg, usdc, eurc } = await getContracts();
+      const from = document.getElementById("swapFrom").value;
+      const amount = await parseTokenAmount(from, document.getElementById("swapAmount").value);
 
-      const usdcInput = document.getElementById("usdcAmount").value.trim();
-      const eurcInput = document.getElementById("eurcAmount").value.trim();
+      if (amount <= 0n) throw new Error("swap amount 必須大於 0");
 
-      const [usdcDecimals, eurcDecimals] = await Promise.all([
-        usdc.decimals(),
-        eurc.decimals()
-      ]);
-
-      const usdcAmount = ethers.parseUnits(usdcInput || "0", usdcDecimals);
-      const eurcAmount = ethers.parseUnits(eurcInput || "0", eurcDecimals);
-
-      if (usdcAmount <= 0n && eurcAmount <= 0n) {
-        throw new Error("USDC / EURC 至少要有一個大於 0");
-      }
-
-      if (usdcAmount > 0n) {
-        const allowance = await usdc.allowance(userAddress, POOL_ADDRESS);
-        log(`目前 USDC allowance：${allowance.toString()}`);
-        if (allowance < usdcAmount) {
-          log("送出 USDC approve...");
-          const tx = await usdc.approve(POOL_ADDRESS, usdcAmount);
-          log(`USDC approve tx: ${tx.hash}`);
-          await tx.wait();
-          log("USDC approve 完成", "ok");
-        } else {
-          log("USDC allowance 已足夠，略過 approve", "ok");
-        }
-      }
-
-      if (eurcAmount > 0n) {
-        const allowance = await eurc.allowance(userAddress, POOL_ADDRESS);
-        log(`目前 EURC allowance：${allowance.toString()}`);
-        if (allowance < eurcAmount) {
-          log("送出 EURC approve...");
-          const tx = await eurc.approve(POOL_ADDRESS, eurcAmount);
-          log(`EURC approve tx: ${tx.hash}`);
-          await tx.wait();
-          log("EURC approve 完成", "ok");
-        } else {
-          log("EURC allowance 已足夠，略過 approve", "ok");
-        }
+      if (from === "USDC") {
+        await approveIfNeeded(usdc, cfg.poolAddress, amount, "USDC");
+      } else {
+        await approveIfNeeded(eurc, cfg.poolAddress, amount, "EURC");
       }
     }
 
-    async function depositLiquidity() {
-      const { usdc, eurc, pool } = await getContracts();
+    async function doSwap(fromSym, toSym, humanAmount, humanMinOut, receiverOverride = "") {
+      setStatus("Swap 執行中...", `${fromSym} -> ${toSym}`, "warn");
 
-      const usdcInput = document.getElementById("usdcAmount").value.trim();
-      const eurcInput = document.getElementById("eurcAmount").value.trim();
-      const minLpInput = document.getElementById("minLp").value.trim();
+      const { cfg, pool, usdc, eurc } = await getContracts();
 
-      const [usdcDecimals, eurcDecimals] = await Promise.all([
-        usdc.decimals(),
-        eurc.decimals()
-      ]);
+      if (fromSym === toSym) throw new Error("swap from / to 不能相同");
 
-      const usdcAmount = ethers.parseUnits(usdcInput || "0", usdcDecimals);
-      const eurcAmount = ethers.parseUnits(eurcInput || "0", eurcDecimals);
-      const minLp = ethers.getBigInt(minLpInput || "0");
+      const amount = await parseTokenAmount(fromSym, humanAmount);
+      const minOut = await parseTokenAmount(toSym, humanMinOut || "0");
 
-      if (usdcAmount <= 0n && eurcAmount <= 0n) {
-        throw new Error("至少要存入一種幣");
-      }
+      if (amount <= 0n) throw new Error("swap amount 必須大於 0");
 
-      const [usdcBalance, eurcBalance] = await Promise.all([
+      const i = fromSym === "USDC" ? cfg.usdcIndex : cfg.eurcIndex;
+      const j = toSym === "USDC" ? cfg.usdcIndex : cfg.eurcIndex;
+      const receiver = receiverOverride?.trim() || userAddress;
+
+      const token = fromSym === "USDC" ? usdc : eurc;
+      await approveIfNeeded(token, cfg.poolAddress, amount, fromSym);
+
+      log(`swap raw params: i=${i}, j=${j}, dx=${amount.toString()}, minDy=${minOut.toString()}, receiver=${receiver}`);
+
+      await pool["exchange(int128,int128,uint256,uint256,address)"].staticCall(i, j, amount, minOut, receiver);
+      log("swap staticCall 通過", "ok");
+
+      const tx = await pool["exchange(int128,int128,uint256,uint256,address)"](i, j, amount, minOut, receiver);
+      log(`swap tx: ${tx.hash}`);
+      setStatus("Swap 已送出", `tx: ${tx.hash}`, "warn");
+
+      const receipt = await tx.wait();
+      log(`swap 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Swap 完成", `block=${receipt.blockNumber}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("Swap", `block=${receipt.blockNumber}`);
+    }
+
+    async function approveDepositTokens() {
+      const { cfg, usdc, eurc } = await getContracts();
+
+      const usdcAmount = await parseTokenAmount("USDC", document.getElementById("depositUsdc").value);
+      const eurcAmount = await parseTokenAmount("EURC", document.getElementById("depositEurc").value);
+
+      if (usdcAmount > 0n) await approveIfNeeded(usdc, cfg.poolAddress, usdcAmount, "USDC");
+      if (eurcAmount > 0n) await approveIfNeeded(eurc, cfg.poolAddress, eurcAmount, "EURC");
+      if (usdcAmount <= 0n && eurcAmount <= 0n) throw new Error("至少要有一個 deposit amount 大於 0");
+    }
+
+    async function doDeposit(usdcHuman, eurcHuman, minLpHuman) {
+      setStatus("Deposit 執行中...", `USDC=${usdcHuman}, EURC=${eurcHuman}`, "warn");
+
+      const { pool, usdc, eurc, cfg } = await getContracts();
+
+      const usdcAmount = await parseTokenAmount("USDC", usdcHuman);
+      const eurcAmount = await parseTokenAmount("EURC", eurcHuman);
+      const minLp = ethers.getBigInt((minLpHuman || "0").trim());
+
+      const [usdcBalance, eurcBalance, usdcAllowance, eurcAllowance] = await Promise.all([
         usdc.balanceOf(userAddress),
-        eurc.balanceOf(userAddress)
+        eurc.balanceOf(userAddress),
+        usdc.allowance(userAddress, cfg.poolAddress),
+        eurc.allowance(userAddress, cfg.poolAddress),
       ]);
 
-      log(`USDC balance: ${usdcBalance.toString()}`);
-      log(`EURC balance: ${eurcBalance.toString()}`);
-      log(`deposit raw amounts: [${usdcAmount.toString()}, ${eurcAmount.toString()}], minLP=${minLp.toString()}`);
+      log(`USDC balance = ${usdcBalance.toString()}`);
+      log(`EURC balance = ${eurcBalance.toString()}`);
+      log(`USDC allowance = ${usdcAllowance.toString()}`);
+      log(`EURC allowance = ${eurcAllowance.toString()}`);
 
-      if (usdcAmount > usdcBalance) {
-        throw new Error("USDC 餘額不足");
-      }
-      if (eurcAmount > eurcBalance) {
-        throw new Error("EURC 餘額不足");
-      }
+      if (usdcAmount > usdcBalance) throw new Error("USDC 餘額不足");
+      if (eurcAmount > eurcBalance) throw new Error("EURC 餘額不足");
+      if (usdcAmount > usdcAllowance) throw new Error("USDC allowance 不足");
+      if (eurcAmount > eurcAllowance) throw new Error("EURC allowance 不足");
 
       const amounts = [usdcAmount, eurcAmount];
+      log(`deposit raw amounts: [${amounts[0].toString()}, ${amounts[1].toString()}], minLP=${minLp.toString()}`);
 
-      try {
-        log("先做 staticCall 測試...");
-        await pool.add_liquidity.staticCall(amounts, minLp);
-        log("staticCall 通過", "ok");
-      } catch (e) {
-        log("staticCall 失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
-        throw e;
-      }
+      await pool.add_liquidity.staticCall(amounts, minLp);
+      log("deposit staticCall 通過", "ok");
 
-      try {
-        log("估算 gas...");
-        const gasEstimate = await pool.add_liquidity.estimateGas(amounts, minLp);
-        log(`estimateGas 成功：${gasEstimate.toString()}`, "ok");
-      } catch (e) {
-        log("estimateGas 失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
-        throw e;
-      }
+      const gasEstimate = await pool.add_liquidity.estimateGas(amounts, minLp);
+      log(`deposit gasEstimate = ${gasEstimate.toString()}`, "ok");
 
-      log(`送出 add_liquidity：USDC=${usdcInput}, EURC=${eurcInput}, minLP=${minLp.toString()}`);
+      const gasLimit = gasEstimate * 2n;
+      log(`deposit gasLimit = ${gasLimit.toString()}`, "ok");
 
-      try {
-        const tx = await pool.add_liquidity(amounts, minLp);
-        log(`Deposit tx: ${tx.hash}`);
-        const receipt = await tx.wait();
-        log(`Deposit 完成，區塊號：${receipt.blockNumber}`, "ok");
-      } catch (e) {
-        log("送交易失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
-        throw e;
-      }
-    }    
+      const tx = await pool.add_liquidity(amounts, minLp, {
+        gasLimit
+      });
 
+      log(`deposit tx: ${tx.hash}`);
+      setStatus("Deposit 已送出", `tx: ${tx.hash}`, "warn");
 
-    function getErrorMessage(e) {
-      return (
-        e?.shortMessage ||
-        e?.reason ||
-        e?.info?.error?.message ||
-        e?.error?.message ||
-        e?.message ||
-        String(e)
-      );
+      const receipt = await tx.wait();
+      log(`deposit 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Deposit 完成", `block=${receipt.blockNumber}`, "ok");
+
+      await updateAllBalances();
+      showSuccessToast("Deposit", `block=${receipt.blockNumber}`);
     }
 
-    document.getElementById("connectBtn").onclick = async () => {
-      try {
-        await connectWallet();
-      } catch (e) {
-        log(`錯誤：${getErrorMessage(e)}`, "err");
-      }
-    };
+    async function doWithdrawProportional(lpHuman, minUsdcHuman, minEurcHuman) {
+      setStatus("Withdraw 執行中...", `LP=${lpHuman}`, "warn");
 
-    document.getElementById("debugBtn").onclick = async () => {
-      try {
-        await debugAddresses();
-      } catch (e) {
-        log(`錯誤：${getErrorMessage(e)}`, "err");
-      }
-    };
+      const { pool } = await getContracts();
+      const lpAmount = await parseLpAmount(lpHuman);
+      const minUsdc = await parseTokenAmount("USDC", minUsdcHuman || "0");
+      const minEurc = await parseTokenAmount("EURC", minEurcHuman || "0");
 
-    document.getElementById("approveBtn").onclick = async () => {
-      try {
-        await approveTokens();
-      } catch (e) {
-        log(`錯誤：${getErrorMessage(e)}`, "err");
-      }
-    };
+      if (lpAmount <= 0n) throw new Error("LP amount 必須大於 0");
 
-    document.getElementById("depositBtn").onclick = async () => {
-      try {
-        await depositLiquidity();
-      } catch (e) {
-        log(`錯誤：${getErrorMessage(e)}`, "err");
-      }
-    };
+      const mins = [minUsdc, minEurc];
+      log(`withdraw raw: lp=${lpAmount.toString()}, mins=[${mins[0].toString()}, ${mins[1].toString()}]`);
 
-    document.getElementById("clearBtn").onclick = () => {
-      clearLog();
-    };
+      await pool.remove_liquidity.staticCall(lpAmount, mins);
+      log("withdraw staticCall 通過", "ok");
+
+      const tx = await pool.remove_liquidity(lpAmount, mins);
+      log(`withdraw tx: ${tx.hash}`);
+      setStatus("Withdraw 已送出", `tx: ${tx.hash}`, "warn");
+
+      const receipt = await tx.wait();
+      log(`withdraw 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Withdraw 完成", `block=${receipt.blockNumber}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("Withdraw", `block=${receipt.blockNumber}`);
+    }
+
+    async function doWithdrawOneCoin(lpHuman, tokenSym, minOutHuman) {
+      setStatus("Withdraw One 執行中...", `LP=${lpHuman}, Token=${tokenSym}`, "warn");
+
+      const { cfg, pool } = await getContracts();
+      const lpAmount = await parseLpAmount(lpHuman);
+      const minOut = await parseTokenAmount(tokenSym, minOutHuman || "0");
+      const idx = tokenSym === "USDC" ? cfg.usdcIndex : cfg.eurcIndex;
+
+      if (lpAmount <= 0n) throw new Error("LP amount 必須大於 0");
+
+      await pool["remove_liquidity_one_coin(uint256,int128,uint256)"].staticCall(lpAmount, idx, minOut);
+      log("withdraw one staticCall 通過", "ok");
+
+      const tx = await pool["remove_liquidity_one_coin(uint256,int128,uint256)"](lpAmount, idx, minOut);
+      log(`withdraw one tx: ${tx.hash}`);
+      setStatus("Withdraw One 已送出", `tx: ${tx.hash}`, "warn");
+
+      const receipt = await tx.wait();
+      log(`withdraw one 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Withdraw One 完成", `block=${receipt.blockNumber}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("Withdraw One", `block=${receipt.blockNumber}`);
+    }
+
+    async function approveGaugeLp() {
+      const { cfg, lpToken } = await getContracts();
+      const amount = await parseLpAmount(document.getElementById("stakeLpAmount").value);
+
+      if (amount <= 0n) throw new Error("stake LP amount 必須大於 0");
+      await approveIfNeeded(lpToken, cfg.gaugeAddress, amount, "LP");
+    }
+
+    async function doStake(lpHuman) {
+      setStatus("Stake 執行中...", `LP=${lpHuman}`, "warn");
+
+      const { gauge, lpToken, cfg } = await getContracts();
+      const amount = await parseLpAmount(lpHuman);
+
+      if (amount <= 0n) throw new Error("stake amount 必須大於 0");
+
+      const lpBalance = await lpToken.balanceOf(userAddress);
+      log(`stake input = ${lpHuman}`);
+      log(`stake raw amount = ${amount.toString()}`);
+      log(`LP balance = ${lpBalance.toString()}`);
+
+      if (amount > lpBalance) {
+        throw new Error("LP 餘額不足，無法 stake 這麼多");
+      }
+
+      await approveIfNeeded(lpToken, cfg.gaugeAddress, amount, "LP");
+
+      await gauge["deposit(uint256)"].staticCall(amount);
+      log("stake staticCall 通過", "ok");
+
+      const tx = await gauge["deposit(uint256)"](amount);
+      log(`stake tx: ${tx.hash}`);
+      setStatus("Stake 已送出", `tx: ${tx.hash}`, "warn");
+
+      const receipt = await tx.wait();
+      log(`stake 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Stake 完成", `block=${receipt.blockNumber}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("Stake", `block=${receipt.blockNumber}`);
+    }
+
+    async function doUnstake(lpHuman) {
+      setStatus("Unstake 執行中...", `LP=${lpHuman}`, "warn");
+
+      const { gauge } = await getContracts();
+      const amount = await parseLpAmount(lpHuman);
+
+      if (amount <= 0n) throw new Error("unstake amount 必須大於 0");
+
+      await gauge.withdraw.staticCall(amount);
+      log("unstake staticCall 通過", "ok");
+
+      const tx = await gauge.withdraw(amount);
+      log(`unstake tx: ${tx.hash}`);
+      setStatus("Unstake 已送出", `tx: ${tx.hash}`, "warn");
+
+      const receipt = await tx.wait();
+      log(`unstake 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Unstake 完成", `block=${receipt.blockNumber}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("Unstake", `block=${receipt.blockNumber}`);
+    }
+
+    async function doClaim() {
+      setStatus("Claim 執行中...", "claim_rewards()", "warn");
+
+      const { gauge } = await getContracts();
+
+      await gauge["claim_rewards()"].staticCall();
+      log("claim staticCall 通過", "ok");
+
+      const tx = await gauge["claim_rewards()"]();
+      log(`claim tx: ${tx.hash}`);
+      setStatus("Claim 已送出", `tx: ${tx.hash}`, "warn");
+
+      const receipt = await tx.wait();
+      log(`claim 完成，block=${receipt.blockNumber}`, "ok");
+      setStatus("Claim 完成", `block=${receipt.blockNumber}`, "ok");
+      await updateAllBalances();
+      showSuccessToast("Claim", `block=${receipt.blockNumber}`);
+    }
+
+    async function runBatchPlan() {
+      setStatus("Batch 執行中...", "請查看左側最近動作與完整紀錄", "warn");
+
+      const raw = document.getElementById("batchPlan").value.trim();
+      let plan;
+
+      try {
+        plan = JSON.parse(raw);
+      } catch {
+        throw new Error("Batch Plan 不是合法 JSON");
+      }
+
+      if (!Array.isArray(plan)) throw new Error("Batch Plan 必須是陣列");
+
+      for (let i = 0; i < plan.length; i++) {
+        const step = plan[i];
+        log(`--- Batch Step ${i + 1} / ${plan.length}: ${step.action} ---`, "warntext");
+        setStatus(`Batch Step ${i + 1}/${plan.length}`, `action=${step.action}`, "warn");
+
+        switch (step.action) {
+          case "swap":
+            await doSwap(step.from, step.to, step.amount, step.minOut || "0", step.receiver || "");
+            break;
+          case "deposit":
+            await doDeposit(step.usdc || "0", step.eurc || "0", step.minLp || "0");
+            break;
+          case "withdraw":
+            await doWithdrawProportional(step.lp, step.minUsdc || "0", step.minEurc || "0");
+            break;
+          case "withdrawOne":
+            await doWithdrawOneCoin(step.lp, step.token, step.minOut || "0");
+            break;
+          case "stake":
+            await doStake(step.amount);
+            break;
+          case "unstake":
+            await doUnstake(step.amount);
+            break;
+          case "claim":
+            await doClaim();
+            break;
+          default:
+            throw new Error(`未知 batch action: ${step.action}`);
+        }
+      }
+
+      setStatus("Batch 完成", "所有步驟已執行完畢", "ok");
+      log("Batch Plan 執行完成。", "ok");
+      await updateAllBalances();
+      showSuccessToast("Batch");
+    }
+
+    async function safeRun(actionName, fn) {
+      try {
+        await fn();
+      } catch (e) {
+        const msg = getErrorMessage(e);
+        setStatus(`${actionName} 失敗`, msg, "err");
+        log(`錯誤：${msg}`, "err");
+        showErrorToast(actionName, msg);
+      }
+    }
+
+    document.getElementById("connectBtn").onclick = () => safeRun("連接錢包", connectWallet);
+    document.getElementById("debugBtn").onclick = () => safeRun("檢查", debugAll);
+    document.getElementById("approveSwapBtn").onclick = () => safeRun("Approve Swap", approveSwapToken);
+
+    document.getElementById("swapBtn").onclick = () => safeRun("Swap", () =>
+      doSwap(
+        document.getElementById("swapFrom").value,
+        document.getElementById("swapTo").value,
+        document.getElementById("swapAmount").value,
+        document.getElementById("swapMinOut").value,
+        document.getElementById("swapReceiver").value
+      )
+    );
+
+    document.getElementById("approveDepositBtn").onclick = () => safeRun("Approve Deposit", approveDepositTokens);
+
+    document.getElementById("depositBtn").onclick = () => safeRun("Deposit", () =>
+      doDeposit(
+        document.getElementById("depositUsdc").value,
+        document.getElementById("depositEurc").value,
+        document.getElementById("depositMinLp").value
+      )
+    );
+
+    document.getElementById("withdrawBtn").onclick = () => safeRun("Withdraw", () =>
+      doWithdrawProportional(
+        document.getElementById("withdrawLpAmount").value,
+        document.getElementById("withdrawMinUsdc").value,
+        document.getElementById("withdrawMinEurc").value
+      )
+    );
+
+    document.getElementById("withdrawOneBtn").onclick = () => safeRun("Withdraw One", () =>
+      doWithdrawOneCoin(
+        document.getElementById("withdrawOneLpAmount").value,
+        document.getElementById("withdrawOneToken").value,
+        document.getElementById("withdrawOneMinOut").value
+      )
+    );
+
+    document.getElementById("approveGaugeBtn").onclick = () => safeRun("Approve Gauge", approveGaugeLp);
+    document.getElementById("stakeBtn").onclick = () => safeRun("Stake", () =>
+      doStake(document.getElementById("stakeLpAmount").value)
+    );
+
+    document.getElementById("unstakeBtn").onclick = () => safeRun("Unstake", () =>
+      doUnstake(document.getElementById("unstakeLpAmount").value)
+    );
+
+    document.getElementById("claimBtn").onclick = () => safeRun("Claim", doClaim);
+    document.getElementById("runBatchBtn").onclick = () => safeRun("Batch", runBatchPlan);
+    document.getElementById("refreshBalancesBtn").onclick = () => safeRun("刷新餘額", updateAllBalances);
+    document.getElementById("clearLogBtn").onclick = clearLog;
   </script>
 </body>
 </html>
