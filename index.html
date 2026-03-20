@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Arc Mini Prediction Market</title>
+  <style>
+    body { font-family: Arial; text-align: center; margin-top: 50px; }
+    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+  </style>
+</head>
+<body>
+
+<h2>Will BTC > 80k by April?</h2>
+
+<button onclick="vote('yes')">YES</button>
+<button onclick="vote('no')">NO</button>
+
+<h3 id="result"></h3>
+
+<script>
+let yes = 0;
+let no = 0;
+
+function vote(choice) {
+  if (choice === 'yes') yes++;
+  else no++;
+
+  let total = yes + no;
+  let yesPercent = ((yes / total) * 100).toFixed(1);
+  let noPercent = ((no / total) * 100).toFixed(1);
+
+  document.getElementById("result").innerText =
+    `YES: ${yesPercent}% | NO: ${noPercent}%`;
+}
+</script>
+
+</body>
+</html>
