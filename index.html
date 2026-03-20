@@ -1,37 +1,543 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-Hant">
 <head>
-  <title>Arc Mini Prediction Market</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arc Curve Deposit Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.2/dist/ethers.umd.min.js"></script>
   <style>
-    body { font-family: Arial; text-align: center; margin-top: 50px; }
-    button { padding: 10px 20px; margin: 10px; font-size: 16px; }
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 860px;
+      margin: 24px auto;
+      padding: 0 16px;
+      line-height: 1.5;
+    }
+
+    h1 {
+      margin-bottom: 8px;
+    }
+
+    .note {
+      background: #fff8db;
+      border: 1px solid #f1d46a;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: bold;
+    }
+
+    input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+
+    .small {
+      font-size: 13px;
+      color: #555;
+    }
+
+    .log {
+      background: #111;
+      color: #eee;
+      padding: 14px;
+      border-radius: 10px;
+      min-height: 240px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: Consolas, monospace;
+    }
+
+    .ok { color: #18a558; }
+    .warn { color: #c07a00; }
+    .err { color: #d84a4a; }
+
+    code {
+      background: #f3f3f3;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
+  <h1>Arc Testnet Curve Deposit Tool</h1>
 
-<h2>Will BTC > 80k by April?</h2>
+  <div class="note">
+    <div><b>使用前先做兩件事：</b></div>
+    <div>1. 把程式內的 <code>POOL_ADDRESS</code> / <code>USDC_ADDRESS</code> / <code>EURC_ADDRESS</code> 改成正確完整地址。</div>
+    <div>2. 不要用 <code>file://</code> 直接雙擊開啟，請用 <code>http://127.0.0.1</code> 的本機伺服器打開。</div>
+  </div>
 
-<button onclick="vote('yes')">YES</button>
-<button onclick="vote('no')">NO</button>
+  <div class="card">
+    <div class="row">
+      <div>
+        <label for="usdcAmount">USDC 存入數量</label>
+        <input id="usdcAmount" type="text" value="0.1" />
+      </div>
+      <div>
+        <label for="eurcAmount">EURC 存入數量</label>
+        <input id="eurcAmount" type="text" value="0.1" />
+      </div>
+    </div>
 
-<h3 id="result"></h3>
+    <label for="minLp">Minimum LP Tokens</label>
+    <input id="minLp" type="text" value="0" />
 
-<script>
-let yes = 0;
-let no = 0;
+    <div class="small">
+      第一次測試建議：USDC / EURC 先填很小的值，<code>minLp</code> 先填 0。
+    </div>
+  </div>
 
-function vote(choice) {
-  if (choice === 'yes') yes++;
-  else no++;
+  <div class="card">
+    <button id="connectBtn">1. 連接 MetaMask</button>
+    <button id="debugBtn">2. 驗證地址與鏈別</button>
+    <button id="approveBtn">3. Approve USDC / EURC</button>
+    <button id="depositBtn">4. Deposit 到 Pool</button>
+    <button id="clearBtn">清空紀錄</button>
+  </div>
 
-  let total = yes + no;
-  let yesPercent = ((yes / total) * 100).toFixed(1);
-  let noPercent = ((no / total) * 100).toFixed(1);
+  <div class="card">
+    <b>執行紀錄</b>
+    <div id="log" class="log"></div>
+  </div>
 
-  document.getElementById("result").innerText =
-    `YES: ${yesPercent}% | NO: ${noPercent}%`;
-}
-</script>
+  <script>
+    const { ethers } = window.ethers;
 
+    // =========================
+    // 只要改下面三個地址即可
+    // =========================
+    const POOL_ADDRESS = "0x2d84d79c852f6842abe0304b70bbaa1506add457";
+    const USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
+    const EURC_ADDRESS = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a";
+
+    // Arc Testnet 參數
+    const ARC_CHAIN_ID_DEC = 5042002n;
+    const ARC_CHAIN_ID_HEX = "0x4CEF52";
+
+    const ARC_NETWORK = {
+      chainId: ARC_CHAIN_ID_HEX,
+      chainName: "Arc Testnet",
+      nativeCurrency: {
+        name: "USDC",
+        symbol: "USDC",
+        decimals: 18
+      },
+      rpcUrls: ["https://rpc.testnet.arc.network"],
+      blockExplorerUrls: ["https://testnet.arcscan.app"]
+    };
+
+    // ERC20 最小 ABI
+    const ERC20_ABI = [
+      "function name() view returns (string)",
+      "function symbol() view returns (string)",
+      "function decimals() view returns (uint8)",
+      "function balanceOf(address owner) view returns (uint256)",
+      "function allowance(address owner, address spender) view returns (uint256)",
+      "function approve(address spender, uint256 amount) returns (bool)"
+    ];
+
+    // Curve 2-coin pool 常見介面
+    const CURVE_POOL_ABI = [
+       "function add_liquidity(uint256[] amounts, uint256 min_mint_amount) returns (uint256)",
+       "function coins(uint256 i) view returns (address)",
+       "function N_COINS() view returns (uint256)"
+    ];
+
+    async function debugPoolCoins() {
+      const { pool } = await getContracts();
+
+      try {
+        const n = await pool.N_COINS();
+        log(`N_COINS = ${n.toString()}`);
+
+        for (let i = 0; i < Number(n); i++) {
+          const c = await pool.coins(i);
+          log(`coins(${i}) = ${c}`);
+        }
+      } catch (e) {
+        log("讀取 pool coins 失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
+      }
+    }
+
+    let injectedProvider = null;
+    let provider = null;
+    let signer = null;
+    let userAddress = null;
+
+    function log(msg, type = "") {
+      const box = document.getElementById("log");
+      const line = document.createElement("div");
+      if (type) line.className = type;
+      line.textContent = msg;
+      box.appendChild(line);
+      box.scrollTop = box.scrollHeight;
+      console.log(msg);
+    }
+
+    function clearLog() {
+      document.getElementById("log").innerHTML = "";
+    }
+
+    function serializeError(e) {
+      return {
+        message: e?.message ?? null,
+        shortMessage: e?.shortMessage ?? null,
+        reason: e?.reason ?? null,
+        code: e?.code ?? null,
+        data: e?.data ?? null,
+        error: e?.error ?? null,
+        info: e?.info ?? null,
+        stack: e?.stack ?? null
+      };
+    }
+
+    function getMetaMaskProvider() {
+      if (typeof window === "undefined") return null;
+      const eth = window.ethereum;
+      if (!eth) return null;
+
+      // 多 provider 情況
+      if (Array.isArray(eth.providers)) {
+        const mm = eth.providers.find((p) => p && p.isMetaMask && typeof p.request === "function");
+        if (mm) return mm;
+      }
+
+      // 單 provider 情況
+      if (eth.isMetaMask && typeof eth.request === "function") {
+        return eth;
+      }
+
+      return null;
+    }
+
+    async function ensureMetaMask() {
+      const mm = getMetaMaskProvider();
+      if (!mm) {
+        throw new Error("找不到 MetaMask provider。請確認：1. 已安裝並解鎖 MetaMask 2. 用 http://127.0.0.1 開啟頁面 3. 暫時停用其他錢包插件後再試。");
+      }
+      return mm;
+    }
+
+    async function connectWallet() {
+      injectedProvider = await ensureMetaMask();
+
+      await injectedProvider.request({
+        method: "eth_requestAccounts"
+      });
+
+      provider = new ethers.BrowserProvider(injectedProvider);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
+
+      log(`已連接錢包：${userAddress}`, "ok");
+
+      const network = await provider.getNetwork();
+      log(`目前 chainId：${network.chainId.toString()}`);
+
+      if (network.chainId !== ARC_CHAIN_ID_DEC) {
+        log("目前不在 Arc Testnet，嘗試切換鏈...", "warn");
+        await switchToArc();
+      }
+
+      const network2 = await provider.getNetwork();
+      log(`目前鏈別確認：${network2.chainId.toString()}`);
+    }
+
+    async function switchToArc() {
+      const mm = await ensureMetaMask();
+
+      try {
+        await mm.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: ARC_CHAIN_ID_HEX }]
+        });
+        log("已切換到 Arc Testnet", "ok");
+      } catch (err) {
+        if (err.code === 4902) {
+          await mm.request({
+            method: "wallet_addEthereumChain",
+            params: [ARC_NETWORK]
+          });
+          log("已新增並切換到 Arc Testnet", "ok");
+        } else {
+          throw err;
+        }
+      }
+
+      provider = new ethers.BrowserProvider(mm);
+      signer = await provider.getSigner();
+      userAddress = await signer.getAddress();
+    }
+
+    function ensureHexAddress(addr, name) {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) {
+        throw new Error(`${name} 不是完整的 42 字元地址：${addr}`);
+      }
+    }
+
+    async function getContracts() {
+      if (!provider || !signer || !userAddress) {
+        throw new Error("請先連接 MetaMask");
+      }
+
+      ensureHexAddress(POOL_ADDRESS, "POOL_ADDRESS");
+      ensureHexAddress(USDC_ADDRESS, "USDC_ADDRESS");
+      ensureHexAddress(EURC_ADDRESS, "EURC_ADDRESS");
+
+      const usdc = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, signer);
+      const eurc = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, signer);
+      const pool = new ethers.Contract(POOL_ADDRESS, CURVE_POOL_ABI, signer);
+
+      return { usdc, eurc, pool };
+    }
+
+    async function debugAddresses() {
+      if (!provider) {
+        throw new Error("請先連接 MetaMask");
+      }
+
+      ensureHexAddress(POOL_ADDRESS, "POOL_ADDRESS");
+      ensureHexAddress(USDC_ADDRESS, "USDC_ADDRESS");
+      ensureHexAddress(EURC_ADDRESS, "EURC_ADDRESS");
+
+      const network = await provider.getNetwork();
+      log(`chainId = ${network.chainId.toString()}`);
+
+      const addresses = [
+        ["POOL_ADDRESS", POOL_ADDRESS],
+        ["USDC_ADDRESS", USDC_ADDRESS],
+        ["EURC_ADDRESS", EURC_ADDRESS]
+      ];
+
+      for (const [name, address] of addresses) {
+        const code = await provider.getCode(address);
+        log(`${name}: ${address}`);
+        log(`${name} has code: ${code !== "0x" ? "true" : "false"}`);
+      }
+
+      const usdcRead = new ethers.Contract(USDC_ADDRESS, ERC20_ABI, provider);
+      const eurcRead = new ethers.Contract(EURC_ADDRESS, ERC20_ABI, provider);
+
+      try {
+        const [name, symbol, decimals] = await Promise.all([
+          usdcRead.name(),
+          usdcRead.symbol(),
+          usdcRead.decimals()
+        ]);
+        log(`USDC -> name=${name}, symbol=${symbol}, decimals=${decimals}`, "ok");
+      } catch (e) {
+        throw new Error("USDC_ADDRESS 不是可正常讀取的 ERC20，或地址 / 鏈別有誤。");
+      }
+
+      try {
+        const [name, symbol, decimals] = await Promise.all([
+          eurcRead.name(),
+          eurcRead.symbol(),
+          eurcRead.decimals()
+        ]);
+        log(`EURC -> name=${name}, symbol=${symbol}, decimals=${decimals}`, "ok");
+      } catch (e) {
+        throw new Error("EURC_ADDRESS 不是可正常讀取的 ERC20，或地址 / 鏈別有誤。");
+      }
+
+      log("地址與 ERC20 讀取測試完成。", "ok");
+
+      await debugPoolCoins();
+    }
+
+    async function approveTokens() {
+      const { usdc, eurc } = await getContracts();
+
+      const usdcInput = document.getElementById("usdcAmount").value.trim();
+      const eurcInput = document.getElementById("eurcAmount").value.trim();
+
+      const [usdcDecimals, eurcDecimals] = await Promise.all([
+        usdc.decimals(),
+        eurc.decimals()
+      ]);
+
+      const usdcAmount = ethers.parseUnits(usdcInput || "0", usdcDecimals);
+      const eurcAmount = ethers.parseUnits(eurcInput || "0", eurcDecimals);
+
+      if (usdcAmount <= 0n && eurcAmount <= 0n) {
+        throw new Error("USDC / EURC 至少要有一個大於 0");
+      }
+
+      if (usdcAmount > 0n) {
+        const allowance = await usdc.allowance(userAddress, POOL_ADDRESS);
+        log(`目前 USDC allowance：${allowance.toString()}`);
+        if (allowance < usdcAmount) {
+          log("送出 USDC approve...");
+          const tx = await usdc.approve(POOL_ADDRESS, usdcAmount);
+          log(`USDC approve tx: ${tx.hash}`);
+          await tx.wait();
+          log("USDC approve 完成", "ok");
+        } else {
+          log("USDC allowance 已足夠，略過 approve", "ok");
+        }
+      }
+
+      if (eurcAmount > 0n) {
+        const allowance = await eurc.allowance(userAddress, POOL_ADDRESS);
+        log(`目前 EURC allowance：${allowance.toString()}`);
+        if (allowance < eurcAmount) {
+          log("送出 EURC approve...");
+          const tx = await eurc.approve(POOL_ADDRESS, eurcAmount);
+          log(`EURC approve tx: ${tx.hash}`);
+          await tx.wait();
+          log("EURC approve 完成", "ok");
+        } else {
+          log("EURC allowance 已足夠，略過 approve", "ok");
+        }
+      }
+    }
+
+    async function depositLiquidity() {
+      const { usdc, eurc, pool } = await getContracts();
+
+      const usdcInput = document.getElementById("usdcAmount").value.trim();
+      const eurcInput = document.getElementById("eurcAmount").value.trim();
+      const minLpInput = document.getElementById("minLp").value.trim();
+
+      const [usdcDecimals, eurcDecimals] = await Promise.all([
+        usdc.decimals(),
+        eurc.decimals()
+      ]);
+
+      const usdcAmount = ethers.parseUnits(usdcInput || "0", usdcDecimals);
+      const eurcAmount = ethers.parseUnits(eurcInput || "0", eurcDecimals);
+      const minLp = ethers.getBigInt(minLpInput || "0");
+
+      if (usdcAmount <= 0n && eurcAmount <= 0n) {
+        throw new Error("至少要存入一種幣");
+      }
+
+      const [usdcBalance, eurcBalance] = await Promise.all([
+        usdc.balanceOf(userAddress),
+        eurc.balanceOf(userAddress)
+      ]);
+
+      log(`USDC balance: ${usdcBalance.toString()}`);
+      log(`EURC balance: ${eurcBalance.toString()}`);
+      log(`deposit raw amounts: [${usdcAmount.toString()}, ${eurcAmount.toString()}], minLP=${minLp.toString()}`);
+
+      if (usdcAmount > usdcBalance) {
+        throw new Error("USDC 餘額不足");
+      }
+      if (eurcAmount > eurcBalance) {
+        throw new Error("EURC 餘額不足");
+      }
+
+      const amounts = [usdcAmount, eurcAmount];
+
+      try {
+        log("先做 staticCall 測試...");
+        await pool.add_liquidity.staticCall(amounts, minLp);
+        log("staticCall 通過", "ok");
+      } catch (e) {
+        log("staticCall 失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
+        throw e;
+      }
+
+      try {
+        log("估算 gas...");
+        const gasEstimate = await pool.add_liquidity.estimateGas(amounts, minLp);
+        log(`estimateGas 成功：${gasEstimate.toString()}`, "ok");
+      } catch (e) {
+        log("estimateGas 失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
+        throw e;
+      }
+
+      log(`送出 add_liquidity：USDC=${usdcInput}, EURC=${eurcInput}, minLP=${minLp.toString()}`);
+
+      try {
+        const tx = await pool.add_liquidity(amounts, minLp);
+        log(`Deposit tx: ${tx.hash}`);
+        const receipt = await tx.wait();
+        log(`Deposit 完成，區塊號：${receipt.blockNumber}`, "ok");
+      } catch (e) {
+        log("送交易失敗：" + JSON.stringify(serializeError(e), null, 2), "err");
+        throw e;
+      }
+    }    
+
+
+    function getErrorMessage(e) {
+      return (
+        e?.shortMessage ||
+        e?.reason ||
+        e?.info?.error?.message ||
+        e?.error?.message ||
+        e?.message ||
+        String(e)
+      );
+    }
+
+    document.getElementById("connectBtn").onclick = async () => {
+      try {
+        await connectWallet();
+      } catch (e) {
+        log(`錯誤：${getErrorMessage(e)}`, "err");
+      }
+    };
+
+    document.getElementById("debugBtn").onclick = async () => {
+      try {
+        await debugAddresses();
+      } catch (e) {
+        log(`錯誤：${getErrorMessage(e)}`, "err");
+      }
+    };
+
+    document.getElementById("approveBtn").onclick = async () => {
+      try {
+        await approveTokens();
+      } catch (e) {
+        log(`錯誤：${getErrorMessage(e)}`, "err");
+      }
+    };
+
+    document.getElementById("depositBtn").onclick = async () => {
+      try {
+        await depositLiquidity();
+      } catch (e) {
+        log(`錯誤：${getErrorMessage(e)}`, "err");
+      }
+    };
+
+    document.getElementById("clearBtn").onclick = () => {
+      clearLog();
+    };
+  </script>
 </body>
 </html>
